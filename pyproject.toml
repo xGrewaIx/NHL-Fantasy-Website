@@ -1,0 +1,44 @@
+[project]
+name = "nhl-fantasy-stats-website"
+version = "0.1.0"
+description = "End-to-end NHL analytics and fantasy hockey platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "streamlit",
+    "pydantic-settings",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = [
+    ".venv",
+    "data",
+    "artifacts",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
