@@ -1,5 +1,11 @@
+"""
+home.py: This is the homepage of the application.
+"""
+
+# https://docs.streamlit.io/get-started
 import streamlit as st
 
+# set_page_config: Configure default settings of the page
 st.set_page_config(
     page_title="NHL Fantasy Platform",
     page_icon="🏒",

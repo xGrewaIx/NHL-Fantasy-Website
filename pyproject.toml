@@ -6,20 +6,23 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 
 dependencies = [
-    "fastapi",
-    "uvicorn[standard]",
-    "streamlit",
-    "pydantic-settings",
-    "python-dotenv",
+    "fastapi>=0.141,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "streamlit>=1.40,<2.0",
+    "pydantic-settings>=2.0,<3.0",
+    "python-dotenv>=1.0,<2.0",
+    "httpx[http2]>=0.28.1",
+    "tenacity>=9.1.4",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "httpx",
-    "ruff",
+    "pytest>=8.0,<9.0",
+    "httpx2",
+    "ruff>=0.8,<1.0",
 ]
 
+# Ruff configuration
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -29,16 +32,22 @@ exclude = [
     "artifacts",
 ]
 
+# linting configuration
+# https://docs.astral.sh/ruff/linter/#rule-selection 
 [tool.ruff.lint]
-select = [
-    "E",
-    "F",
-    "I",
-    "B",
+select = [ 
+    "E", 
+    "F", 
+    "I", 
+    "B", 
     "UP",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-q"
+# pytest configuration
+# https://docs.pytest.org/en/7.1.x/explanation/goodpractices.html
+# https://docs.pytest.org/en/stable/reference/customize.html 
+# https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
+[tool.pytest.ini_options] # 
+testpaths = ["tests"] # specify the directory where the test files are located
+pythonpath = ["."] # List of directories added to python search path to find "tests" directory
+addopts = "-q" # quiet output (concise output)
