@@ -86,6 +86,7 @@ Key Identifiers for game:
 
 ## NHL API JSON responses 
 Base URL: https://api-web.nhle.com/
+Supplemental resource: https://docs.rs/nhl_api/latest/nhl_api/ 
 
 Getting player specific information endpoint: /v1/player/{player}/landing (player = playerId)
 
