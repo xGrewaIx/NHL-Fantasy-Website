@@ -66,3 +66,6 @@ logs/
 
 # ignore all example api responses in test (folder = tests/example_API_responses)
 tests/example_API_responses/*
+
+# ignore all aws files 
+.aws/
