@@ -97,8 +97,12 @@ The platform follows a layered cloud architecture:
 - Only use services that are needed
 - Created an AWS budget
 
-## 6. Resource naming
+## 6. S3 bucket Naming
 
-Follow a consistent naming convention:
+Follow a consistent naming convention for bucket and key
 
+bucket: name_of_the_bucket-region-key
 
+OBJECTS ARE STORED IN S3 NOT FILES
+
+Key: /source={}/entity={}/....... further and further key filters
