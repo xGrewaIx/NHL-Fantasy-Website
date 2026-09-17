@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from scripts.ingest_date import ingest_date
+from scripts.ingest_date_local import ingest_date
 
 # set global variables for the test
 TARGET_DATE = "2023-11-10"

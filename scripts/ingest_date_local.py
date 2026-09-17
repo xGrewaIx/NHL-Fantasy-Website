@@ -1,10 +1,10 @@
 import sys
 from datetime import datetime
 
-import pipeline.storage.local as local
 from pipeline.ingest.client import NHLClient
 from pipeline.ingest.games import get_boxscore, get_play_by_play
 from pipeline.ingest.schedules import get_schedule
+from pipeline.storage.local import LocalStorage
 
 """
 This is my orchestration script for ingesting data from the NHL api and writing it to storage
@@ -30,6 +30,9 @@ def ingest_date(date: str):
     returns:
         None - writes data to storage and prints summary to console
     """
+
+    # Load instance of LocalStorage class to write to local storage
+    local = LocalStorage()
 
     # keep track of how many files were skipped and how many were written
     objects_written = 0
@@ -60,7 +63,6 @@ def ingest_date(date: str):
         raise ValueError(f"Schedule data is not of type dict. Got {type(schedule_data)} instead.")
 
     # 3. Index into the schedule_data to get the list of games for that date
-    # index into the schedule_data to get the list of games for that date
     # find object whose date == target date -> games is a list of dicts
     # so iterate through games to find the ones whose "gameState" == "OFF"
     # append those games "id" to a list of completed games
