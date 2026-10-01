@@ -7,38 +7,44 @@ from dotenv import load_dotenv
 
 from pipeline.storage.base import StorageBase
 
+load_dotenv()  # Load environment variables from .env file
+# aws lambda will have BRONZE_BUCKET_NAME set in the environment variables, will load in using 
+# os.getenv("BRONZE_BUCKET_NAME")
 
 class S3Storage(StorageBase):
     # Initialize the S3Storage class with the bucket name and profile name
+    # Do not give profile name, 
     
-    load_dotenv()  # Load environment variables from .env file    
-    def __init__(
-        self,
-        bucket_name: str = os.getenv("BRONZE_BUCKET_NAME"),
-        profile_name: str = os.getenv("IAM_PROFILE_NAME"),
-    ):
-        self.bucket_name = bucket_name
-        self.session = boto3.Session(profile_name=profile_name)
-        self.s3 = self.session.client("s3")
+    def __init__(self, bucket_name: str | None = None):
+        self.bucket_name = bucket_name or os.getenv("BRONZE_BUCKET_NAME")
+        if not self.bucket_name:
+            raise ValueError("BRONZE_BUCKET_NAME must be set")
+        self.s3 = boto3.client("s3")  # Create an S3 client using default AWS credentials
 
     # Write a JSON object to S3 storage
-    def write_json(self, json_obj: dict, file_path: str):
+    def write_json(self, json_obj: dict, file_path: str, force: bool = False):
         """
         Write JSON data to S3 storage. If the file already exists, skip writing it.
         """
-        if self.exists(file_path):
-            print(f"s3://{self.bucket_name}/{file_path} already exists. Skipping.")
+        existed = self.exists(file_path)
+        if existed and not force:
+            print(f"File s3://{self.bucket_name}/{file_path} already exists. Skipping write.")
             return "Skipped"
 
+        # If force is true/or the file does not exist, write the JSON object to S3
+        # overwrite the file if it already exists or create a new file if it does not exist
         self.s3.put_object(
             Bucket=self.bucket_name,
             Key=file_path,
             Body=json.dumps(json_obj, indent=4),
             ContentType="application/json",
         )
+        
 
-        print(f"Written JSON object to s3://{self.bucket_name}/{file_path}.")
-        return "Written"
+        result = "Replaced" if existed else "Written"
+        print(f"{result} JSON object at s3://{self.bucket_name}/{file_path}.")
+        return result
+
 
     def read_json(self, file_path: str):
         """
@@ -62,7 +68,7 @@ class S3Storage(StorageBase):
             self.s3.head_object(Bucket=self.bucket_name, Key=file_path)
             return True
         except ClientError as e:
-            if e.response["Error"]["Code"] == "404":
+            if e.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
                 return False
             else:
                 raise e
@@ -102,7 +108,7 @@ class S3Storage(StorageBase):
         Given a date and game_id, return the path to the play-by-play file for that game in S3 storage.
 
         Example: source=nhlapi/entity=play_by_play/date=date/game_id=game_id/play_by_play.json
-        """
+        """  # noqa: E501
         return f"source=nhlapi/entity=play_by_play/date={date}/game_id={game_id}/play_by_play.json"
 
     def team_roster_season_path(self, team_id: str, season: str):
@@ -110,7 +116,7 @@ class S3Storage(StorageBase):
         Given a team ID and season, return the path to the team roster for that team and season in S3 storage.
 
         Example: source=nhlapi/entity=team_roster/team_id=team_id/season=season/roster.json
-        """
+        """  # noqa: E501
         return f"source=nhlapi/entity=team_roster/team_id={team_id}/season={season}/roster.json"
 
     def team_roster_now_path(self, team_id: str):
@@ -126,21 +132,21 @@ class S3Storage(StorageBase):
         Given a player ID, return the path to the player information file for that player in S3 storage.
 
         Example: source=nhlapi/entity=player_info/player_id=player_id/player_info.json
-        """
+        """  # noqa: E501
         return f"source=nhlapi/entity=player_info/player_id={player_id}/player_info.json"
 
     def ingestion_path_summary(self, date: str, run_id: str):
         """
         Given a date and run ID, return the path to the ingestion summary for that date and run ID in S3 storage.
 
-        Example: source=nhlapi/entity=ingestion_summary/date=date/summary_run_id.json
-        """
-        return f"source=nhlapi/entity=ingestion_summary/date={date}/summary_{run_id}.json"
+        Example: run-manifests/date=2023-11-11/run_id=<uuid>.json
+        """  # noqa: E501
+        return f"run-manifests/date={date}/run_id={run_id}.json"
 
-    def write_summary(self, summary_data: dict, file_path: str):
+    def write_summary(self, summary_data: dict, file_path: str, force: bool = False):
         """
         Write an ingestion summary dictionary as JSON to S3 storage.
 
         If the file already exists, skip writing it.
         """
-        return self.write_json(summary_data, file_path)
+        return self.write_json(summary_data, file_path, force=force)

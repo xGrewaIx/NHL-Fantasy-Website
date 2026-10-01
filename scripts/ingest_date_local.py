@@ -1,4 +1,5 @@
 import sys
+import uuid
 from datetime import datetime
 
 from pipeline.ingest.client import NHLClient
@@ -28,8 +29,11 @@ def ingest_date(date: str):
         date: str - date in the format YYYY-MM-DD
 
     returns:
-        None - writes data to storage and prints summary to console
+        summary: dict - summary of the ingestion process
     """
+    
+    # create a unique run_id for this ingestion process
+    run_id = str(uuid.uuid4())
 
     # Load instance of LocalStorage class to write to local storage
     local = LocalStorage()
@@ -70,6 +74,7 @@ def ingest_date(date: str):
 
     daily_schedule = None
     completed_games = []
+    games_found = 0
 
     for date_obj in schedule_data.get("gameWeek", []):
         if date_obj.get("date") == target_date:
@@ -78,7 +83,9 @@ def ingest_date(date: str):
             daily_schedule = date_obj
 
             for game in date_obj.get("games", []):
-                if game.get("gameState") == "OFF":
+                games_found += 1
+
+                if game.get("gameState") in {"FINAL", "OFF"}:
                     game_id = game.get("id")
 
                     if game_id is not None:
@@ -107,9 +114,11 @@ def ingest_date(date: str):
         objects_skipped += 1
 
     # 5. for each completed game, get the boxscore and play-by-play data and save them to storage
-    # track failed games in a list to print at the end
-    # when a game fails to be ingested, print the game ID, entity, and the error message
-    failed_games = []
+    # track failed objects in a list to print at the end
+    # when an object fails to be ingested, print the object ID, entity, and the error message
+    failed_objects = []
+    
+    objects_failed = 0
 
     for game in completed_games:
         # get boxscore data
@@ -130,10 +139,10 @@ def ingest_date(date: str):
                 objects_skipped += 1
 
         # if there is an error in getting the boxscore data,
-        # catch the exception and add it to the failed_games list
+        # catch the exception and add it to the failed_objects list
         except Exception as error:
-            failed_games.append({"game_id": game, "entity": "boxscore", "error": str(error)})
-
+            failed_objects.append({"game_id": game, "entity": "boxscore", "error": str(error)})
+            objects_failed += 1
             print(f"Failed to ingest boxscore for game {game}. Error: {error}")
 
         try:
@@ -154,24 +163,31 @@ def ingest_date(date: str):
                 objects_skipped += 1
 
         # If there is an error in getting the play-by-play data, catch the exception
-        # and add it to the failed_games list
+        # and add it to the failed_objects list
         except Exception as error:
-            failed_games.append({"game_id": game, "entity": "play_by_play", "error": str(error)})
-
+            failed_objects.append({"game_id": game, "entity": "play_by_play", "error": str(error)})
+            objects_failed += 1
             print(f"Failed to ingest play-by-play for game {game}. Error: {error}")
 
     # keep track of end time for the ingestion process
     end_time = datetime.now()
 
     duration = end_time - start_time
+    
+    # have a status variable to indicate whether the ingestion process was successful or not
+    # include partial success if some objects failed to be ingested
+    status = "Success" if objects_failed == 0 else "Partial Success" if objects_failed < len(completed_games) else "Failure"  # noqa: E501
 
     # 6. Print summary of completed games and their respective file paths
     summary = {
+        "run_id": run_id,
+        "status": status,
         "target_date": target_date,
         "completed_games": len(completed_games),
         "objects_written": objects_written,
         "objects_skipped": objects_skipped,
-        "failed_games": failed_games,
+        "objects_failed": objects_failed,
+        "failed_objects": failed_objects,
         "schedule_written": schedule_written,
         "boxscore_written": boxscore_written,
         "pbp_written": pbp_written,
@@ -179,8 +195,6 @@ def ingest_date(date: str):
         "finish_time": end_time.isoformat(),
         "duration": str(duration),
     }
-
-    run_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
     summary_file_path = local.ingestion_path_summary(date, run_id)
     local.write_summary(summary, summary_file_path)
@@ -190,22 +204,24 @@ def ingest_date(date: str):
     print("=" * 60)
     print("NHL DATE INGESTION SUMMARY")
     print("=" * 60)
-
+    print(f"Run ID:            {summary['run_id']}")
     print(f"Target date:       {summary['target_date']}")
+    print(f"Status:            {summary['status']}")
     print(f"Completed games:   {summary['completed_games']}")
     print(f"Objects written:   {summary['objects_written']}")
     print(f"Objects skipped:   {summary['objects_skipped']}")
-    print(f"Failed games:      {len(summary['failed_games'])}")
+    print(f"Objects failed:    {summary['objects_failed']}")
+    print(f"Failed objects:    {len(summary['failed_objects'])}")
     print(f"Start time:        {summary['start_time']}")
     print(f"Finish time:       {summary['finish_time']}")
     print(f"Duration:          {summary['duration']}")
 
-    if summary["failed_games"]:
+    if summary["failed_objects"]:
         print()
-        print("FAILED GAMES")
+        print("FAILED OBJECTS")
         print("-" * 60)
 
-        for failure in summary["failed_games"]:
+        for failure in summary["failed_objects"]:
             print(
                 f"Game ID: {failure['game_id']} | "
                 f"Entity: {failure['entity']} | "
